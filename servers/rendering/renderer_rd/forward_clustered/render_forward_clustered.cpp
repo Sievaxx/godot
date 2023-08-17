@@ -1921,7 +1921,7 @@ void RenderForwardClustered::_render_scene(RenderDataRD *p_render_data, const Co
 			}
 		}
 
-		//standard opaque
+		// Standard opaque.
 		{
 			RenderListParameters render_list_params(
 					render_list[RENDER_LIST_OPAQUE].elements.ptr(),
