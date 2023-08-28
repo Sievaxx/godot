@@ -2564,7 +2564,10 @@ String RichTextLabel::_find_language(Item *p_item) {
 	Item *item = p_item;
 
 	while (item) {
-		if (item->type == ITEM_PARAGRAPH) {
+		if (item->type == ITEM_LANGUAGE) {
+			ItemLanguage *p = static_cast<ItemLanguage *>(item);
+			return p->language;
+		} else if (item->type == ITEM_PARAGRAPH) {
 			ItemParagraph *p = static_cast<ItemParagraph *>(item);
 			return p->language;
 		}
@@ -3092,15 +3095,17 @@ void RichTextLabel::_remove_item(Item *p_item, const int p_line, const int p_sub
 		// If a newline was erased, all lines AFTER the newline need to be decremented.
 		if (p_item->type == ITEM_NEWLINE) {
 			current_frame->lines.remove_at(p_line);
-			for (int i = 0; i < current->subitems.size(); i++) {
-				if (current->subitems[i]->line > p_subitem_line) {
-					current->subitems[i]->line--;
+			if (p_line < (int)current_frame->lines.size() && current_frame->lines[p_line].from) {
+				for (List<Item *>::Element *E = current_frame->lines[p_line].from->E; E; E = E->next()) {
+					if (E->get()->line > p_subitem_line) {
+						E->get()->line--;
+					}
 				}
 			}
 		}
 	} else {
 		// First, remove all child items for the provided item.
-		for (int i = 0; i < size; i++) {
+		while (p_item->subitems.size()) {
 			_remove_item(p_item->subitems.front()->get(), p_line, p_subitem_line);
 		}
 		// Then remove the provided item itself.
@@ -3196,34 +3201,40 @@ bool RichTextLabel::remove_paragraph(const int p_paragraph) {
 	}
 
 	// Remove all subitems with the same line as that provided.
-	Vector<int> subitem_indices_to_remove;
-	for (int i = 0; i < current->subitems.size(); i++) {
-		if (current->subitems[i]->line == p_paragraph) {
-			subitem_indices_to_remove.push_back(i);
+	Vector<List<Item *>::Element *> subitem_to_remove;
+	if (current_frame->lines[p_paragraph].from) {
+		for (List<Item *>::Element *E = current_frame->lines[p_paragraph].from->E; E; E = E->next()) {
+			if (E->get()->line == p_paragraph) {
+				subitem_to_remove.push_back(E);
+			} else {
+				break;
+			}
 		}
 	}
 
 	bool had_newline = false;
 	// Reverse for loop to remove items from the end first.
-	for (int i = subitem_indices_to_remove.size() - 1; i >= 0; i--) {
-		int subitem_idx = subitem_indices_to_remove[i];
-		had_newline = had_newline || current->subitems[subitem_idx]->type == ITEM_NEWLINE;
-		_remove_item(current->subitems[subitem_idx], current->subitems[subitem_idx]->line, p_paragraph);
+	for (int i = subitem_to_remove.size() - 1; i >= 0; i--) {
+		List<Item *>::Element *subitem = subitem_to_remove[i];
+		had_newline = had_newline || subitem->get()->type == ITEM_NEWLINE;
+		_remove_item(subitem->get(), subitem->get()->line, p_paragraph);
 	}
 
 	if (!had_newline) {
 		current_frame->lines.remove_at(p_paragraph);
-		if (current_frame->lines.size() == 0) {
-			current_frame->lines.resize(1);
-		}
+	}
+
+	if (current_frame->lines.is_empty()) {
+		current_frame->lines.resize(1);
 	}
 
 	if (p_paragraph == 0 && current->subitems.size() > 0) {
 		main->lines[0].from = main;
 	}
 
-	int to_line = main->first_invalid_line.load();
-	main->first_invalid_line.store(MIN(to_line, p_paragraph));
+	main->first_invalid_line.store(MIN(main->first_invalid_line.load(), p_paragraph));
+	main->first_resized_line.store(MIN(main->first_resized_line.load(), p_paragraph));
+	main->first_invalid_font_line.store(MIN(main->first_invalid_font_line.load(), p_paragraph));
 	queue_redraw();
 
 	return true;
@@ -3438,6 +3449,17 @@ void RichTextLabel::push_meta(const Variant &p_meta) {
 	ItemMeta *item = memnew(ItemMeta);
 
 	item->meta = p_meta;
+	_add_item(item, true);
+}
+
+void RichTextLabel::push_language(const String &p_language) {
+	_stop_thread();
+	MutexLock data_lock(data_mutex);
+
+	ERR_FAIL_COND(current->type == ITEM_TABLE);
+	ItemLanguage *item = memnew(ItemLanguage);
+
+	item->language = p_language;
 	_add_item(item, true);
 }
 
@@ -4222,6 +4244,11 @@ void RichTextLabel::append_text(const String &p_bbcode) {
 			push_indent(indent_level);
 			pos = brk_end + 1;
 			tag_stack.push_front(tag);
+		} else if (tag.begins_with("lang=")) {
+			String lang = tag.substr(5, tag.length()).unquote();
+			push_language(lang);
+			pos = brk_end + 1;
+			tag_stack.push_front("lang");
 		} else if (tag == "p") {
 			push_paragraph(HORIZONTAL_ALIGNMENT_LEFT);
 			pos = brk_end + 1;
@@ -5607,6 +5634,7 @@ void RichTextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("push_list", "level", "type", "capitalize", "bullet"), &RichTextLabel::push_list, DEFVAL(String::utf8("•")));
 	ClassDB::bind_method(D_METHOD("push_meta", "data"), &RichTextLabel::push_meta);
 	ClassDB::bind_method(D_METHOD("push_hint", "description"), &RichTextLabel::push_hint);
+	ClassDB::bind_method(D_METHOD("push_language", "language"), &RichTextLabel::push_language);
 	ClassDB::bind_method(D_METHOD("push_underline"), &RichTextLabel::push_underline);
 	ClassDB::bind_method(D_METHOD("push_strikethrough"), &RichTextLabel::push_strikethrough);
 	ClassDB::bind_method(D_METHOD("push_table", "columns", "inline_align", "align_to_row"), &RichTextLabel::push_table, DEFVAL(INLINE_ALIGNMENT_TOP), DEFVAL(-1));

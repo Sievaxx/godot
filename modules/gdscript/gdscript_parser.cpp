@@ -1850,7 +1850,18 @@ GDScriptParser::ForNode *GDScriptParser::parse_for() {
 		n_for->variable = parse_identifier();
 	}
 
-	consume(GDScriptTokenizer::Token::IN, R"(Expected "in" after "for" variable name.)");
+	if (match(GDScriptTokenizer::Token::COLON)) {
+		n_for->datatype_specifier = parse_type();
+		if (n_for->datatype_specifier == nullptr) {
+			push_error(R"(Expected type specifier after ":".)");
+		}
+	}
+
+	if (n_for->datatype_specifier == nullptr) {
+		consume(GDScriptTokenizer::Token::IN, R"(Expected "in" or ":" after "for" variable name.)");
+	} else {
+		consume(GDScriptTokenizer::Token::IN, R"(Expected "in" after "for" variable type specifier.)");
+	}
 
 	n_for->list = parse_expression(false);
 
@@ -2280,9 +2291,7 @@ GDScriptParser::ExpressionNode *GDScriptParser::parse_identifier(ExpressionNode 
 	IdentifierNode *identifier = alloc_node<IdentifierNode>();
 	complete_extents(identifier);
 	identifier->name = previous.get_identifier();
-#ifdef DEBUG_ENABLED
 	identifier->suite = current_suite;
-#endif
 
 	if (current_suite != nullptr && current_suite->has_local(identifier->name)) {
 		const SuiteNode::Local &declaration = current_suite->get_local(identifier->name);
@@ -3140,6 +3149,8 @@ GDScriptParser::ExpressionNode *GDScriptParser::parse_preload(ExpressionNode *p_
 GDScriptParser::ExpressionNode *GDScriptParser::parse_lambda(ExpressionNode *p_previous_operand, bool p_can_assign) {
 	LambdaNode *lambda = alloc_node<LambdaNode>();
 	lambda->parent_function = current_function;
+	lambda->parent_lambda = current_lambda;
+
 	FunctionNode *function = alloc_node<FunctionNode>();
 	function->source_lambda = lambda;
 
@@ -3166,6 +3177,9 @@ GDScriptParser::ExpressionNode *GDScriptParser::parse_lambda(ExpressionNode *p_p
 
 	FunctionNode *previous_function = current_function;
 	current_function = function;
+
+	LambdaNode *previous_lambda = current_lambda;
+	current_lambda = lambda;
 
 	SuiteNode *body = alloc_node<SuiteNode>();
 	body->parent_function = current_function;
@@ -3204,6 +3218,7 @@ GDScriptParser::ExpressionNode *GDScriptParser::parse_lambda(ExpressionNode *p_p
 	}
 
 	current_function = previous_function;
+	current_lambda = previous_lambda;
 	in_lambda = previous_in_lambda;
 	lambda->function = function;
 
@@ -4272,7 +4287,7 @@ String GDScriptParser::SuiteNode::Local::get_name() const {
 		case SuiteNode::Local::FOR_VARIABLE:
 			return "for loop iterator";
 		case SuiteNode::Local::PATTERN_BIND:
-			return "pattern_bind";
+			return "pattern bind";
 		case SuiteNode::Local::UNDEFINED:
 			return "<undefined>";
 		default:
