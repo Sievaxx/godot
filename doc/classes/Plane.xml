@@ -148,6 +148,31 @@
 				Returns the orthogonal projection of [param point] into a point in the plane.
 			</description>
 		</method>
+		<method name="project_on_plane" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="point" type="Vector3" />
+			<description>
+				From Unity.
+				Projects a vector onto a plane defined by a normal orthogonal to the plane.
+			</description>
+		</method>
+		<method name="project_vector_on_plane" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="point" type="Vector3" />
+			<description>
+				From Unity Math3d.
+				Projects a vector onto a plane. The output is not normalized.
+			</description>
+		</method>
+		<method name="project_point_on_plane" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="plane_point" type="Vector3" />
+			<param index="1" name="point" type="Vector3" />
+			<description>
+				From Unity Math3d.
+				This function returns a point which is a projection from a point to a plane.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="d" type="float" setter="" getter="" default="0.0">

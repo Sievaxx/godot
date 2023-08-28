@@ -65,9 +65,26 @@ struct _NO_DISCARD_ Plane {
 	Variant intersects_ray_bind(const Vector3 &p_from, const Vector3 &p_dir) const;
 	Variant intersects_segment_bind(const Vector3 &p_begin, const Vector3 &p_end) const;
 
+	// this should be called something different but
+	// i can't be bothered to change it everywhere else
 	_FORCE_INLINE_ Vector3 project(const Vector3 &p_point) const {
 		return p_point - normal * distance_to(p_point);
 	}
+
+	// unitys vector3 projection functions cuz unity has more then one
+	_FORCE_INLINE_ Vector3 project_on_plane(const Vector3 &p_point) const {
+		return p_point - p_point.project(normal);
+	}
+
+	_FORCE_INLINE_ Vector3 project_vector_on_plane(const Vector3 &p_point) const {
+		return p_point - p_point.dot(normal) * normal;
+	}
+
+	_FORCE_INLINE_ Vector3 project_point_on_plane(const Vector3 &p_plane_point, const Vector3 &p_point) const {
+		return p_point + (normal * -(normal.dot(p_point - p_plane_point)));
+	}
+
+
 
 	/* misc */
 

@@ -1881,6 +1881,7 @@ static void _register_variant_builtin_methods() {
 	bind_method(Vector3, posmod, sarray("mod"), varray());
 	bind_method(Vector3, posmodv, sarray("modv"), varray());
 	bind_method(Vector3, project, sarray("b"), varray());
+	bind_method(Vector3, project_point_on_line, sarray("line_point", "line_vec"), varray());
 	bind_method(Vector3, slide, sarray("n"), varray());
 	bind_method(Vector3, bounce, sarray("n"), varray());
 	bind_method(Vector3, reflect, sarray("n"), varray());
@@ -1949,6 +1950,9 @@ static void _register_variant_builtin_methods() {
 	bind_method(Plane, distance_to, sarray("point"), varray());
 	bind_method(Plane, has_point, sarray("point", "tolerance"), varray(CMP_EPSILON));
 	bind_method(Plane, project, sarray("point"), varray());
+	bind_method(Plane, project_on_plane, sarray("point"), varray());
+	bind_method(Plane, project_vector_on_plane, sarray("point"), varray());
+	bind_method(Plane, project_point_on_plane, sarray("plane_point", "point"), varray());
 	bind_methodv(Plane, intersect_3, &Plane::intersect_3_bind, sarray("b", "c"), varray());
 	bind_methodv(Plane, intersects_ray, &Plane::intersects_ray_bind, sarray("from", "dir"), varray());
 	bind_methodv(Plane, intersects_segment, &Plane::intersects_segment_bind, sarray("from", "to"), varray());

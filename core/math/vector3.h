@@ -134,6 +134,7 @@ struct _NO_DISCARD_ Vector3 {
 	_FORCE_INLINE_ Vector3 posmod(const real_t p_mod) const;
 	_FORCE_INLINE_ Vector3 posmodv(const Vector3 &p_modv) const;
 	_FORCE_INLINE_ Vector3 project(const Vector3 &p_to) const;
+	_FORCE_INLINE_ Vector3 project_point_on_line(const Vector3 &p_line_point, const Vector3 &p_line_vec) const;
 
 	_FORCE_INLINE_ real_t angle_to(const Vector3 &p_to) const;
 	_FORCE_INLINE_ real_t signed_angle_to(const Vector3 &p_to, const Vector3 &p_axis) const;
@@ -297,6 +298,12 @@ Vector3 Vector3::posmodv(const Vector3 &p_modv) const {
 Vector3 Vector3::project(const Vector3 &p_to) const {
 	return p_to * (dot(p_to) / p_to.length_squared());
 }
+
+Vector3 Vector3::project_point_on_line(const Vector3 &p_line_point, const Vector3 &p_line_vec) const {
+	Vector3 res = *this;
+	return p_line_point + p_line_vec * ((res - p_line_point).dot(p_line_vec));
+}
+
 
 real_t Vector3::angle_to(const Vector3 &p_to) const {
 	return Math::atan2(cross(p_to).length(), dot(p_to));
